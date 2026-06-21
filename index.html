@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="アンチコメントを、受け流しかパルプンテに変える感情デトックスツール。8言語対応。" />
+  <meta property="og:title" content="PositiveReply — アンチコメントを、受け流しかパルプンテに" />
+  <meta property="og:description" content="書き殴った感情を意味不明な文字列に変換。SNSでの無駄な争いをスマートに回避。" />
+  <meta property="og:type" content="website" />
+  <title>PositiveReply — アンチコメントを、受け流しに。パルプンテに。</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#F7F0DE" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <!-- BGM pitch-shift engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+    :root {
+      --bg:        #F7F0DE;
+      --bg2:       #FFFBF0;
+      --bg3:       #F1E8D2;
+      --border:    #E3D7B8;
+      --border-strong: #C9B888;
+      --text:      #1B3A6B;
+      --text2:     #6B6555;
+      --text3:     #9A937E;
+      --navy:      #1B3A6B;
+      --navy-dark: #122B52;
+      --red:       #C0392B;
+      --red-bg:    rgba(192,57,43,0.08);
+      --red-border: rgba(192,57,43,0.35);
+      --accent:    #C0392B;
+      --accent-bg: rgba(192,57,43,0.08);
+      --accent-border: rgba(192,57,43,0.35);
+      --danger:    #C0392B;
+      --danger-bg: rgba(192,57,43,0.08);
+      --radius:    10px;
+      --radius-sm: 6px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+      --font-serif: "Noto Serif JP", "Source Serif 4", Georgia, serif;
+      --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+      --stripe: repeating-linear-gradient(135deg, var(--navy) 0 16px, transparent 16px 22px, var(--red) 22px 38px, transparent 38px 44px);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ── Airmail stripe band ── */
+    .airmail-stripe {
+      height: 8px;
+      background: var(--stripe);
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 20px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--bg2);
+      flex-wrap: wrap;
+    }
+    .header-main { flex: 1; min-width: 200px; }
+    .logo {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      color: var(--navy);
+      user-select: none;
+    }
+    .logo span { color: var(--red); }
+    .tagline {
+      font-size: 13px;
+      color: var(--red);
+      font-weight: 500;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .par-avion-stamp {
+      border: 1.5px dashed var(--red);
+      padding: 6px 10px;
+      transform: rotate(3deg);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .par-avion-stamp span {
+      font-size: 9px;
+      color: var(--red);
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    /* ── BGM control ── */
+    .bgm-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.12s;
+    }
+    .bgm-toggle:hover { background: var(--bg3); color: var(--text); }
+    .bgm-toggle.on {
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+    .bgm-toggle i { font-size: 14px; }
+    .bgm-panel {
+      display: none;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .bgm-panel.open { display: block; }
+    .bgm-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .bgm-row + .bgm-row { margin-top: 8px; }
+    .bgm-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .bgm-val {
+      min-width: 56px;
+      text-align: right;
+      color: var(--text);
+      font-size: 12px;
+      font-family: var(--font);
+    }
+    .bgm-pitch-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text2);
+      min-width: 64px;
+      text-align: center;
+    }
+    .bgm-step-group {
+      display: flex;
+      gap: 4px;
+    }
+    .bgm-step-btn {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      font-size: 11px;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+    .bgm-step-btn.active {
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    /* ── BGM mini volume (常時表示) ── */
+    .bgm-mini {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+    .bgm-mini-volume {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .bgm-mini-vol-label {
+      font-size: 10px;
+      color: var(--text3);
+      white-space: nowrap;
+    }
+    .bgm-mini-volume input[type="range"] {
+      width: 70px;
+      accent-color: var(--accent);
+      height: 4px;
+    }
+
+    /* ── 開発者用 隠しパネル ── */
+    .dev-unlock {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+    }
+    .dev-unlock input[type="password"] {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--text);
+      width: 100px;
+    }
+    .dev-unlock button {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text2);
+      cursor: pointer;
+      font-family: var(--font);
+    }
+    .dev-unlock button:hover { background: var(--bg2); }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 24px 16px 80px;
+    }
+
+    /* ── Section title ── */
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text3);
+      margin-bottom: 8px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    /* ── Button groups ── */
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .lang-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .lang-grid .btn {
+      width: 100%;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    @media (min-width: 460px) {
+      .lang-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    .btn {
+      padding: 7px 16px;
+      border-radius: 99px;
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text2);
+      transition: all 0.12s;
+      font-family: var(--font);
+    }
+    .btn:hover { background: var(--bg3); color: var(--text); }
+    .btn.active {
+      background: var(--navy);
+      border-color: var(--navy);
+      color: var(--bg2);
+      font-weight: 500;
+    }
+
+    /* ── Type grid ── */
+    .type-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .type-btn {
+      padding: 11px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 12px;
+      cursor: pointer;
+      color: var(--text2);
+      text-align: center;
+      line-height: 1.5;
+      transition: all 0.12s;
+      font-family: var(--font);
+    }
+    .type-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--border-strong); }
+    .type-btn.active {
+      background: var(--red-bg);
+      border-color: var(--red);
+      color: var(--red);
+      font-weight: 500;
+    }
+    .type-btn small { font-size: 10px; opacity: 0.65; display: block; margin-top: 2px; }
+
+    /* ── Divider ── */
+    .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+    /* ── Input area ── */
+    .input-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid var(--border);;
+      color: var(--text3);
+      transition: all 0.15s;
+    }
+    .badge.active-input {
+      background: var(--danger-bg);
+      border-color: rgba(255,79,79,0.4);
+      color: var(--danger);
+    }
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      font-size: 14px;
+      padding: 10px 12px;
+      resize: vertical;
+      font-family: var(--font);
+      line-height: 1.6;
+      transition: border-color 0.12s;
+    }
+    textarea:focus { outline: none; border-color: #444; }
+    textarea::placeholder { color: var(--text3); }
+    .char-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 5px;
+      margin-bottom: 14px;
+    }
+    .char-count { font-size: 11px; color: var(--text3); }
+    .char-count.warn { color: #f0a500; }
+    .char-count.over { color: var(--danger); font-weight: 600; }
+    .clear-btn {
+      font-size: 11px;
+      color: var(--text3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      opacity: 0.35;
+      pointer-events: none;
+      transition: opacity 0.15s;
+    }
+    .clear-btn.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .clear-btn:hover { color: var(--text2); background: var(--bg3); }
+
+    /* ── Action row ── */
+    .action-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .btn-primary {
+      padding: 9px 22px;
+      border-radius: 99px;
+      border: none;
+      background: var(--red);
+      color: #FFFBF0;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.12s;
+      letter-spacing: 0.01em;
+    }
+    .btn-primary:hover { background: var(--navy-dark); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-secondary {
+      padding: 9px 18px;
+      border-radius: 99px;
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      color: var(--text2);
+      font-size: 13px;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all 0.12s;
+    }
+    .btn-secondary:hover { background: var(--bg3); color: var(--text); }
+    .btn-secondary:active { transform: scale(0.98); }
+    .copied {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: rgba(76,140,99,0.12);
+      color: #3F7A55;
+      border: 1px solid rgba(76,140,99,0.3);
+      display: none;
+    }
+    .phrase-cnt {
+      font-size: 11px;
+      color: var(--text3);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 99px;
+      display: none;
+      margin-left: auto;
+    }
+    .mantra-letters {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--navy);
+      background: var(--bg3);
+      border: 1px solid var(--border-strong);
+      padding: 6px 14px;
+      border-radius: 99px;
+      letter-spacing: 1px;
+    }
+
+    /* ── Output ── */
+    .output-box {
+      min-height: 72px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 18px;
+      letter-spacing: 1.5px;
+      word-break: break-all;
+      line-height: 1.9;
+      color: var(--navy);
+      font-family: var(--font-mono);
+    }
+    .output-box.phrase { font-size: 14px; letter-spacing: 0; line-height: 1.7; font-family: var(--font); }
+    .output-box.empty { color: var(--text3); font-size: 13px; letter-spacing: 0; font-family: var(--font); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 11px;
+      color: var(--text3);
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 400px) {
+      .type-grid { grid-template-columns: 1fr; }
+      .lang-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="airmail-stripe"></div>
+
+<header>
+  <div class="header-main">
+    <div class="logo" id="logoClickTarget">Positive<span>Reply</span></div>
+    <div class="tagline" id="taglineText">アンチコメントを、受け流し( ^ω^ )〜パルプンテ( °∀° )に！</div>
+  </div>
+  <div class="par-avion-stamp"><span>PAR AVION</span></div>
+  <div class="bgm-mini">
+    <button class="bgm-toggle" id="bgmToggle" onclick="toggleBGM()">
+      <i class="ti ti-music" aria-hidden="true"></i>
+      <span id="bgmToggleLabel">BGM オフ</span>
+    </button>
+    <div class="bgm-mini-volume">
+      <span id="volumeLabelText" class="bgm-mini-vol-label">音量</span>
+      <input type="range" id="bgmVolume" min="0" max="100" value="50" oninput="onVolumeChange()">
+    </div>
+  </div>
+</header>
+
+<!-- 開発者用デバッグパネル（通常は非表示。ロゴ5回クリックでパスワード欄が出現） -->
+<div class="dev-unlock" id="devUnlock" style="display:none">
+  <input type="password" id="devPassword" placeholder="••••" />
+  <button onclick="checkDevPassword()">OK</button>
+  <button onclick="hideDevUnlock()">×</button>
+</div>
+
+<div class="bgm-panel" id="bgmPanel" style="display:none">
+  <div class="bgm-row">
+    <span style="min-width:70px">現在の曲</span>
+    <span class="bgm-pitch-badge" id="trackBadge">bgm_00</span>
+    <span style="font-size:11px; color:var(--text3)" id="trackCount">(1曲構成)</span>
+  </div>
+  <div class="bgm-row">
+    <span style="min-width:70px">再生位置</span>
+    <input type="range" id="bgmSeek" min="0" max="100" value="0" step="0.1" oninput="onSeekInput()">
+    <span class="bgm-val" id="bgmTimeVal">0:00 / 0:00</span>
+  </div>
+  <div class="bgm-row">
+    <span style="min-width:70px">確認用</span>
+    <button class="bgm-step-btn" onclick="seekBy(-10)">-10秒</button>
+    <button class="bgm-step-btn" onclick="seekBy(10)">+10秒</button>
+    <button class="bgm-step-btn" onclick="forceNextTrack()">次の曲へ</button>
+  </div>
+  <div class="bgm-row">
+    <button class="bgm-step-btn" onclick="hideDevPanel()">パネルを閉じる</button>
+  </div>
+</div>
+
+
+<main>
+
+  <!-- 言語 -->
+  <div class="card">
+    <div class="label" id="langSectionLabel">言語 / Region</div>
+    <div class="btn-group lang-grid" id="langGroup"></div>
+
+    <div class="divider"></div>
+
+    <!-- 文字モード -->
+    <div id="modeWrap">
+      <div class="label" id="modeLabel">文字モード</div>
+      <div class="btn-group" id="modeGroup"></div>
+    </div>
+
+    <!-- 変換タイプ -->
+    <div class="label" id="typeLabel">変換タイプ</div>
+    <div class="type-grid" id="typeGrid"></div>
+
+    <div class="divider"></div>
+
+    <!-- 入力エリア -->
+    <div class="input-header">
+      <div class="label" style="margin:0" id="inputLabel">書き殴る（任意・140字まで）</div>
+      <span class="badge" id="inputBadge">入力なし → ランダム生成</span>
+    </div>
+    <textarea id="inputText" placeholder="ここに気持ちを書き殴ってください。入力した文字数に合わせて変換されます。"></textarea>
+    <div class="char-row">
+      <span class="char-count" id="charCount">0 / 140</span>
+      <button class="clear-btn" id="clearBtn" onclick="clearInput()">クリア</button>
+    </div>
+
+    <!-- アクション -->
+    <div class="action-row">
+      <button class="btn-primary" onclick="generate()" id="genBtn">変換する</button>
+      <button class="btn-secondary" onclick="copyOutput()" id="copyBtn">コピー</button>
+      <span class="mantra-letters" id="mantraLetters" style="display:none"></span>
+      <span class="copied" id="copiedBadge">✓ コピーしました</span>
+      <span class="phrase-cnt" id="phraseCnt"></span>
+    </div>
+
+    <!-- 出力 -->
+    <div class="label" id="resultLabel">結果</div>
+    <div class="output-box empty" id="outputBox">変換タイプを選んで「変換する」を押してください</div>
+  </div>
+
+</main>
+
+<footer>PositiveReply — Emotional Detox Tool &nbsp;·&nbsp; v1.0</footer>
+
+<script>
+/* ===================== DATA ===================== */
+const HALF_KAO = ["(ToT)","(^^;)","(;_;)","(*_*)","(>_<)","(~_~;)","(o_O)","(?_?)","(._.)","(-.-)","(-_-;)","(@_@)","(O_O)","(X_X)","(^_^;)","(=_=)","(+_+)","(>.<)","(@.@)","(o.O)","(*.*)", "(;'_');","(~_~)","(o_o;)","(._.)~","(>_>;)","(<_<;)","(^o^;)","(-.-;)","(*-*)","(T_T)","(u_u)","(^.^;)","(O.O)","(-_-.)","(>_<)!","(@_@;)","(*^_^*;)","(?.?)","(;.;)","(X.X)","(-.-)zZz"];
+const FULL_KAO_JA = ["（＞＜）","（；；）","（・・？）","（＊＿＊）","（＾＿＾；）","（－．－；）","（＠．＠）","（Ｏ＿Ｏ）","（ーー；）","（＋＿＋）","（＝＿＝）","（＾ｏ＾；）","（Ｔ＿Ｔ）","（；＿；）","（＊．＊）","（・＿・；）","（？＿？）","（×＿×）","（＞．＜）","（Ｘ＿Ｘ）","（～＿～；）","（ｏ＿ｏ）","（＊＾＿＾＊；）","（≧＿≦）","（ーー；；）","（＠＿＠；）","（・・；）","（→＿→）","（←＿←）","（ｏ．ｏ；）","（＾＾；；）","（＞＿＞；）","（Ｏ．Ｏ；）"];
+const FULL_KAO_ZH = ["（>＿<）","（；；）","（＊_＊）","（^＿^；）","（O_O）","（T_T）","（=_=）","（~_~；）","（@_@）","（X_X）","（+_+）","（o_o；）","（？_？）","（>.<；）","（-_-；）","（u_u）","（^o^；）","（O.O；）","（?.?）","（;_;）","（*.*）","（~.~）"];
+
+const C_HALF  = "~!@#$%^&*()[]{}<>?/|\\=+-_,.;:'`\"";
+const C_FUJA  = "〠〄〒※◈▽〓☯⊗〼♾◎▼〶⊕●◇△□◆▲■〽〆〜〃々〰〱〳〴〵ヽヾゝゞ〡〢〣〤〥〦〧〨〩";
+const C_FUZH  = "※◎○●△▲□■◇◆★☆♪♫℃℉㎎㎏㎝㎡㎞§¶†‡‰∞≈≠≤≥∑∏∫∂√∇∈∩∪⊂⊃⊕⊗⊙";
+const C_KANA  = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
+const C_SUBJA = "ぁЯ¿†ぅ℃㊙〽⁂※〒◎⊕♦♣♠♥㎎㎏㎝";
+const C_ZH    = "的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心力理";
+const C_SUBZH = "※○●★☆♪♫℃℉§¶†‡∞≈≠∑∏∫∂√∇⊕⊗";
+const C_BASE  = "abcdefghijklmnopqrstuvwxyz0123456789";
+
+const PH_JA_H = ["Sorry, something went wrong with my connection…","Looks like my message didn't go through properly","My Wi-Fi keeps cutting out, sorry about that","I keep hitting a send error, weird","The app crashed before I could reply","Not sure if this will go through, my signal is terrible","Having some technical issues on my end","My phone died mid-reply, sorry","Error 503 on my end apparently","The network is acting up again","Strange — it shows sent but maybe it didn't?","My carrier is having issues today","Something's wrong with my data connection","The app keeps freezing on me lately","I can't seem to post right now, IDK why","This keeps timing out, so frustrating","My replies keep disappearing, must be a glitch","Tried to send this 3 times already, fingers crossed","Getting a weird network error message","The server seems to be down on my side","My VPN might be messing things up","Signal dropped right as I hit send, oops","My keyboard keeps glitching out, sorry","Having trouble with my data plan today","My phone's been acting weird all day","Roaming issues, can't seem to connect properly","The platform seems buggy on my device","My notifications are all messed up lately","Something in my settings must be off","The message queue is backed up apparently"];
+const PH_JA_F = ["なぜかうまく送信できないみたいです…","接続エラーが出て送れませんでした","Wi-Fiが不安定で届いてるか不安です","何度か送ろうとしたんですが…","電波の状況が悪くてすみません","アプリが固まってしまいました","送信したつもりが届いてないようです","通信状態が悪くて失礼しました","なんかバグってます、すみません","機内モードになってたかもしれません","端末の調子がおかしくて…","ネットワークエラーが頻発しています","タイムアウトしてしまいました","データ通信量が上限に達したみたいです","キャリアの障害が出ているようです","アプリを再起動したら消えてしまいました","送れたと思ったら届いてないパターンです","通知がうまく機能していません","サーバーエラーが表示されました","入力途中でアプリが落ちました","充電が切れていてすぐ返せませんでした","アップデート後から挙動がおかしいです","VPNのせいで繋がらないみたいです","圏外エリアにいて届きませんでした","なぜか文字化けして送れません","SNSのメンテ中だったみたいです","通信制限がかかってしまいました","何度試しても送信ボタンが反応しません","バックグラウンドで落ちていたみたいです","容量不足でアプリが動かなくなりました","おかしいな、ちゃんと送ったつもりなんですが","機種変したばかりで設定がうまくいってません","バッテリーセーバーで通知が来てなかったです","フィルタリングソフトが誤ブロックしました","パケットロスが多発しています","ログアウトされていたみたいです","キャッシュが溜まりすぎていたようです","アカウントに一時的な制限がかかったみたいです","SIMカードを抜き差ししていました","ルーターを再起動していました","電源が落ちてしまっていました","返信しようとしたら誤削除してしまいました","スクリーンタイム制限が発動しました","二段階認証が通らなくなっていました","セキュリティソフトが遮断したみたいです","マナーモードにしていて気づきませんでした","設定をいじっていたら誤操作しました","通信の混雑でタイムラグが発生しています","システムのアップデートが走っていました","圧縮ファイルが開けなくて困っています","既読がつかないので届いてないかもです","スマホを落として画面が割れてしまいました","通信障害のお知らせが出ていました","アプリストアでアップデート待ちでした","機内モードを解除し忘れていました","Bluetoothと干渉してるのかもしれません","アプリの権限設定がリセットされていました","ストレージがいっぱいで保存できませんでした","プロフィール設定の不具合で送信できません","画面がフリーズして操作不能でした","通知音だけ鳴って中身が届いていません","下書きに保存されたまま送れていませんでした","間違って別のトークに送ってしまったかもしれません","アプリがクラッシュレポートを送ってきました","再ログインを求められて入力中です","スリープモードのまま気づきませんでした","画面ロックがかかって操作できませんでした","電波塔のメンテナンスがあったみたいです","プロバイダ側で通信制限が入ったようです","テザリングがうまく繋がっていませんでした","アプリ内のキャッシュクリアでログアウトされました","通知センターに埋もれて見落としていました","端末の言語設定が変わって挙動がおかしいです","画面の自動回転で誤操作してしまいました","古いバージョンのままで対応していなかったようです","端末の空き容量警告が出ていました","スリープ復帰後にアプリが落ちていました","位置情報の許可を求められて止まっていました","通信会社のシステムメンテ中でした","自動更新でアプリが再起動してしまいました","画面が暗転したまま固まっていました","指紋認証がうまく反応しませんでした","通信速度制限がかかって読み込めませんでした","アプリ内の不具合報告が出ていました","バックアップ中で操作がブロックされていました","ホーム画面に戻ったら入力内容が消えていました","端末を再起動している最中でした","知らない間におやすみモードになっていました","アプリのキャッシュが壊れていたようです","通信が混雑する時間帯だったみたいです","アップロード中にエラーが出ました","画面サイズの関係でボタンが反応しませんでした","端末の温度警告で一時的に機能制限がかかりました","SNS側の不具合情報が出ていました","アプリの認証トークンが切れていました","通信が不安定な場所に移動していました","スマホを機種変更したばかりで勝手が違いました","画面ロック解除を忘れて時間が経っていました","地下にいて電波が入りませんでした","通知設定をいじっていて見落としていました","アプリ内ブラウザの読み込みエラーが出ました","通信契約のプラン変更中で一時制限がかかっていました","ストレージ容量を整理している最中でした","端末のOSアップデートが進行中でした","画面ロックパターンを忘れて手間取っていました","バッテリー残量が少なく省電力モードでした","アプリの同期がうまくいっていませんでした","端末を機内に持ち込んでいて使えませんでした","通信が途切れがちな地下鉄に乗っていました","アプリの不具合で文字入力ができませんでした","SNSのサーバー側に遅延が出ていたようです","画面のタッチ操作が一時的に反応しませんでした","通知許可をオフにしていたのを忘れていました","端末をしばらく放置していて電源が落ちていました","アプリのログイン情報が期限切れになっていました","通信トラブルでメッセージが重複して届いたかもしれません","画面の明るさ設定で操作ミスをしてしまいました","端末のストレージ最適化が走っていました","アプリの起動が遅くてタイムアウトしてしまいました"];
+const PH_EN  = ["Sorry, something went wrong with my connection…","Looks like my message didn't go through properly","My Wi-Fi keeps cutting out, sorry about that","I keep hitting a send error, weird","The app crashed before I could reply","Not sure if this will go through, my signal is terrible","Having some technical issues on my end","My phone died mid-reply, sorry","Error 503 on my end apparently","The network is acting up again","Strange — it shows sent but maybe it didn't?","My carrier is having issues today","Something's wrong with my data connection","The app keeps freezing on me lately","I can't seem to post right now, IDK why","This keeps timing out, so frustrating","My replies keep disappearing, must be a glitch","Tried to send this 3 times already, fingers crossed","Getting a weird network error message","The server seems to be down on my side","My VPN might be messing things up","Signal dropped right as I hit send, oops","My keyboard keeps glitching out, sorry","Having trouble with my data plan today","My phone's been acting weird all day","Roaming issues, can't seem to connect properly","The platform seems buggy on my device","My notifications are all messed up lately","Something in my settings must be off","The message queue is backed up apparently","My screen froze right when I hit send","The app says it needs an update first","I think I forgot to turn off airplane mode","Bluetooth might be interfering with something","App permissions got reset somehow","Out of storage space, couldn't save the draft","Something's off with my profile settings","My screen cracked and it's hard to type now","Only the notification sound came through, not the message","It saved as a draft instead of sending","I think I sent it to the wrong chat by accident","The app sent me a crash report just now","It's asking me to log in again","My phone was asleep, didn't notice","Screen got locked mid-send somehow","There was a tower maintenance notice earlier","My provider seems to have throttled my data","Tethering wasn't connecting properly","Got logged out after clearing the cache","Buried in notifications, totally missed it","Language settings changed and now it's acting weird","Auto-rotate messed up my tap, sorry","Guess I was on an old version that wasn't supported","Got a storage warning right as I tried to send","App crashed after waking from sleep mode","It asked for location permission and just froze there","My carrier's doing system maintenance apparently","Auto-update restarted the app mid-message","Screen went black and froze on me","Fingerprint scanner wasn't reading right","Data throttling kicked in, couldn't load anything","There's a bug report popup blocking everything","Backup was running and blocked my input","Went back to home screen and lost what I typed","My phone was mid-restart","Somehow ended up in do-not-disturb mode","Cache got corrupted I think","Must've been a busy traffic time for the network","Got an upload error out of nowhere","Button wasn't responding because of the screen size","Phone overheated and throttled itself temporarily","There's a known outage reported on the platform","My auth token expired apparently","Moved somewhere with bad signal mid-message","Just switched phones, still getting used to it","Forgot to unlock my screen, lol","Was underground, no signal at all","Messed with notification settings and missed this","In-app browser threw a loading error","Plan change put a temporary cap on my data","Was in the middle of cleaning up storage","OS update was running in the background","Forgot my screen lock pattern for a sec","Battery was low so it went into power saver mode","Sync wasn't working right on my end","Had my phone on airplane mode during a flight","Subway ride, signal kept cutting in and out","Couldn't type because of an app glitch","Seems like there was server-side lag","Touchscreen wasn't responding for a moment","Forgot notifications were muted, my bad","Phone died from being left alone too long","Login session expired apparently","Might've sent a duplicate due to a connection hiccup","Brightness setting messed with my tap, oops","Storage optimization was running in the background","App took too long to load and timed out","My ISP is having a rough day apparently","Browser tab crashed before I could send it","Two-factor code never came through","App update broke something on my end","Accidentally force-closed the app mid-type","Got stuck on a loading spinner forever","Phone restarted itself out of nowhere","Some background process ate all my battery","Got rate-limited for some reason","Push notification permission got revoked somehow","My keyboard app crashed mid-sentence","Connection kept dropping every few seconds","App said 'request timed out', so weird","There's apparently a known issue with this version","My account got flagged for review temporarily","Wi-Fi password changed and I didn't know","Phone clock was off so the timestamp got rejected","Got stuck behind a captcha verification","App thinks I'm offline even though I'm connected","Memory got full and the app force-quit","Some firewall on my network blocked the request","My device needs a security update first apparently","Screen recording was somehow interfering with input","Got an unexpected permission popup mid-send","App says my session is invalid now"];
+const PH_ZH  = ["不知道为什么消息发不出去…","网络好像出问题了，抱歉","一直显示发送失败，很奇怪","Wi-Fi信号不稳定，不确定有没有收到","应用程序突然崩溃了","我的手机刚才没电了","运营商好像有故障","服务器报错了，没办法发","超时了，一直在转圈","发送键点了没反应","流量用完了暂时上不了网","VPN影响了网络连接","刚才在没有信号的地方","应用程序一直卡住","不知道有没有发成功，显示已发但没收到？","数据连接好像断了","更新完之后就出问题了","通知功能坏了，没看到消息","缓存太多导致应用崩溃了","设备最近状态很差","漫游状态下网络不稳定","刚换手机，设置还没弄好","系统在更新，暂时不能用","安全软件拦截了发送请求","消息队列积压，发不出去","登录状态过期了，刚才没在线","存储空间不足，应用无法运行","双重验证出问题了","屏幕使用时间限制到了","重启路由器的时候断网了","刷新了好几次还是没发出去","收不到验证码，登不上去","后台进程被强制关闭了","发送途中手机重启了","不小心打开了飞行模式","屏幕突然卡住了，正好是发送的时候","应用说需要先更新一下","我好像忘记关飞行模式了","蓝牙好像有干扰","应用权限好像被重置了","存储空间不够，草稿都保存不了","个人资料设置好像出问题了","屏幕摔裂了，打字有点困难","只收到提示音，没看到消息内容","变成草稿了，没有真正发出去","好像不小心发到别的聊天窗口了","应用刚刚弹出了崩溃报告","它让我重新登录","手机在休眠，没注意到","发送过程中屏幕突然锁了","之前收到过基站维护的通知","运营商好像限制了我的流量","热点共享一直连不上","清理缓存之后被登出了","被一堆通知淹没，完全没看到","语言设置变了，现在行为很奇怪","自动旋转把我的点击搞乱了","可能是旧版本不支持了","正要发送时收到存储空间警告","从休眠唤醒后应用崩溃了","它要定位权限，然后就卡住了","运营商好像在做系统维护","自动更新把应用重启了","屏幕变黑然后卡住了","指纹识别一直识别不了","被限速了，什么都加载不出来","弹出了一个故障报告挡住了一切","正在备份，操作被阻止了","回到主屏幕后输入的内容都没了","手机正在重启","不知怎么进了免打扰模式","缓存好像损坏了","可能是网络高峰期","突然出现上传错误","屏幕尺寸的关系按钮没反应","手机过热，暂时限制了功能","平台上好像有已知的故障","我的登录令牌好像过期了","发消息的时候信号突然变差了","刚换了新手机，还不太习惯","忘记解锁屏幕了，哈哈","在地下，完全没信号","调整通知设置的时候漏看了","应用内浏览器加载出错了","换了套餐之后临时限速了","正在整理存储空间","系统更新正在后台进行","屏幕锁的图案一时想不起来了","电量不足进入了省电模式","同步好像没成功","飞机上一直开着飞行模式","坐地铁的时候信号一直断断续续","应用故障导致打不了字","服务器那边好像有延迟","触屏一时没反应","忘了静音通知了，不好意思","放太久没用手机就没电了","登录状态好像过期了","网络抖动可能发重复了","亮度设置导致误触了","后台正在优化存储空间","应用加载太久超时了","我的网络服务商今天状态不太好","浏览器标签页在发送前崩溃了","验证码一直没收到","应用更新之后这边出问题了","不小心把应用强制关闭了","加载圈一直转个不停","手机自己重启了","后台有个程序耗光了电量","不知道为什么被限流了","推送通知权限好像被取消了","输入法应用中途崩溃了","连接每隔几秒就断一次","应用提示请求超时，太奇怪了","这个版本好像有已知问题","账号好像被临时标记审核了","Wi-Fi密码改了我都不知道","手机时间不对导致时间戳被拒绝了","卡在验证码那一步了","应用一直显示我离线，明明在线","内存满了应用被强制退出了","网络里的防火墙好像拦截了请求"];
+
+/* ── 韓国語フレーズ ── */
+const PH_KO = ["왜인지 메시지가 전송되지 않네요…","연결 오류가 발생해서 보내지 못했어요","와이파이가 불안정해서 잘 모르겠어요","몇 번 시도했는데 안 되네요","앱이 갑자기 꺼져버렸어요","전송했다고 생각했는데 안 갔나봐요","통신 상태가 나빠서 죄송해요","뭔가 버그가 있는 것 같아요","비행기 모드였나봐요","기기가 이상하게 작동하고 있어요","네트워크 오류가 계속 뜨네요","타임아웃이 됐어요","데이터가 다 떨어졌어요","통신사 장애가 있는 것 같아요","앱을 재시작했더니 사라졌어요","알림이 제대로 안 오고 있어요","서버 오류가 표시됐어요","충전이 다 돼서 바로 답장 못 했어요","업데이트 이후로 이상해졌어요","VPN 때문에 연결이 안 되는 것 같아요","음영 지역에 있어서 안 됐어요","SNS 점검 중이었나봐요","데이터 제한이 걸렸어요","아무리 해봐도 전송 버튼이 안 눌려요","백그라운드에서 꺼진 것 같아요","저장 공간이 부족해서 앱이 안 돼요","이상하다, 분명히 보냈는데요","기기 변경 후 설정이 아직 안 됐어요","보안 소프트가 차단한 것 같아요","캐시가 너무 쌓였나봐요","전송하려는 순간 화면이 멈췄어요","앱이 먼저 업데이트하라고 하네요","비행기 모드를 안 끈 것 같아요","블루투스가 간섭하는 것 같아요","앱 권한이 초기화된 것 같아요","저장 공간이 부족해서 임시저장도 안 됐어요","프로필 설정에 문제가 있는 것 같아요","화면이 깨져서 입력하기가 힘들어요","알림음만 오고 내용은 안 왔어요","임시저장만 되고 전송은 안 됐어요","실수로 다른 채팅방에 보낸 것 같아요","앱에서 방금 충돌 보고서가 떴어요","다시 로그인하라고 하네요","폰이 절전 상태였는지 몰랐어요","전송 중에 화면이 잠겼어요","기지국 점검 안내가 있었어요","통신사가 데이터를 제한한 것 같아요","테더링이 잘 연결되지 않았어요","캐시 정리하다가 로그아웃됐어요","알림에 묻혀서 완전히 놓쳤어요","언어 설정이 바뀌어서 이상하게 작동해요","자동 회전 때문에 잘못 눌렸어요","구버전이라 지원이 안 됐나봐요","전송하려는 순간 저장공간 경고가 떴어요","절전 모드에서 깨어난 후 앱이 꺼졌어요","위치 권한을 요청하더니 멈춰버렸어요","통신사가 시스템 점검 중인가봐요","자동 업데이트로 앱이 재시작됐어요","화면이 까매지더니 멈췄어요","지문 인식이 잘 안 됐어요","속도 제한이 걸려서 아무것도 안 불러와졌어요","버그 신고 팝업이 화면을 가렸어요","백업 중이라 입력이 막혔어요","홈 화면으로 갔다가 입력 내용이 사라졌어요","폰이 재시작 중이었어요","어느새 방해 금지 모드가 됐나봐요","캐시가 손상된 것 같아요","네트워크 혼잡 시간대였나봐요","갑자기 업로드 오류가 떴어요","화면 크기 때문에 버튼이 안 눌렸어요","폰이 과열돼서 기능이 잠시 제한됐어요","플랫폼에 알려진 오류가 있다고 하네요","제 인증 토큰이 만료된 것 같아요","메시지 보낼 때 신호가 갑자기 약해졌어요","폰을 바꾼 지 얼마 안 돼서 아직 적응 중이에요","화면 잠금 푸는 걸 깜빡했어요, 하하","지하라서 신호가 전혀 안 잡혔어요","알림 설정 만지다가 놓쳤어요","인앱 브라우저에서 로딩 오류가 났어요","요금제 변경 후 일시적으로 제한이 걸렸어요","저장 공간 정리하던 중이었어요","시스템 업데이트가 백그라운드에서 진행 중이었어요","화면 잠금 패턴이 잠깐 기억 안 났어요","배터리가 부족해서 절전 모드로 들어갔어요","동기화가 잘 안 된 것 같아요","비행기에서 비행기 모드를 켜놓고 있었어요","지하철 타서 신호가 끊겼다 이어졌다 했어요","앱 오류로 입력 자체가 안 됐어요","서버 쪽에 지연이 있었던 것 같아요","터치스크린이 잠깐 반응이 없었어요","알림 무음으로 해놓은 걸 깜빡했어요","오래 방치해서 배터리가 다 떨어졌어요","로그인 세션이 만료된 것 같아요","연결이 끊겼다 이어지면서 중복 전송됐을 수도 있어요","밝기 설정 때문에 잘못 눌렀어요","백그라운드에서 저장공간 최적화가 돌고 있었어요","앱 로딩이 너무 오래 걸려서 타임아웃됐어요","오늘따라 통신사 상태가 안 좋네요","보내기 전에 브라우저 탭이 꺼졌어요","인증번호가 안 왔어요","앱 업데이트 후에 문제가 생겼어요","실수로 앱을 강제 종료했어요","로딩 표시가 계속 돌기만 했어요","폰이 갑자기 저절로 재시작됐어요","백그라운드 프로그램이 배터리를 다 써버렸어요","왜인지 속도 제한이 걸렸나봐요","푸시 알림 권한이 취소된 것 같아요","키보드 앱이 입력 중에 꺼졌어요","몇 초마다 연결이 계속 끊겼어요","요청 시간 초과라고 뜨네요, 이상하게","이 버전에 알려진 문제가 있다고 하네요","계정이 임시로 검토 대상이 된 것 같아요","와이파이 비밀번호가 바뀐 걸 몰랐어요","폰 시간이 안 맞아서 타임스탬프가 거부됐어요","인증 단계에서 막혀버렸어요","분명 연결돼 있는데 앱은 오프라인이라고 떠요","메모리가 가득 차서 앱이 강제 종료됐어요","네트워크 방화벽이 요청을 막은 것 같아요"];
+
+/* ── スペイン語フレーズ ── */
+const PH_ES = ["Por alguna razón no puedo enviar el mensaje…","Parece que el mensaje no llegó bien","Mi Wi-Fi sigue cortándose, lo siento","Sigo recibiendo un error al enviar, qué raro","La app se cerró antes de que pudiera responder","No sé si esto va a llegar, mi señal es pésima","Tengo problemas técnicos de mi lado","Mi teléfono se quedó sin batería mientras respondía","Error 503 en mi extremo, al parecer","La red está fallando de nuevo","Raro, aparece como enviado pero quizás no llegó","Mi operador tiene problemas hoy","Algo está mal con mi conexión de datos","La app se congela constantemente","No puedo publicar ahora mismo, no sé por qué","Esto sigue agotando el tiempo, qué desesperante","Mis respuestas siguen desapareciendo, debe ser un bug","Ya lo intenté 3 veces, cruzo los dedos","Estoy recibiendo un error de red muy extraño","El servidor parece estar caído de mi lado","Mi VPN puede estar causando problemas","La señal se cortó justo cuando envié, ups","Mi teclado sigue fallando, lo siento","Tengo problemas con mi plan de datos hoy","Mi teléfono ha estado raro todo el día","Problemas de roaming, no puedo conectarme bien","La plataforma parece tener errores en mi dispositivo","Mis notificaciones están todas revueltas","Algo en mi configuración debe estar mal","La cola de mensajes está saturada al parecer","Mi pantalla se congeló justo cuando iba a enviar","La app dice que necesito actualizarla primero","Creo que se me olvidó quitar el modo avión","El Bluetooth debe estar interfiriendo con algo","Los permisos de la app se reiniciaron no sé por qué","Sin espacio de almacenamiento, no pude ni guardar el borrador","Algo anda mal con mi perfil","Se me rompió la pantalla y cuesta escribir ahora","Solo llegó el sonido de notificación, no el mensaje","Se guardó como borrador en lugar de enviarse","Creo que lo envié al chat equivocado sin querer","La app me mandó un reporte de error recién","Me está pidiendo iniciar sesión de nuevo","Mi teléfono estaba en reposo, no me di cuenta","La pantalla se bloqueó justo a mitad del envío","Hubo un aviso de mantenimiento de la antena","Mi operador parece haber limitado mis datos","El hotspot no se conectaba bien","Me desconectó la sesión al limpiar la caché","Se me perdió entre tantas notificaciones","Cambió la configuración de idioma y ahora actúa raro","La rotación automática me hizo tocar mal, perdón","Supongo que tenía una versión vieja sin soporte","Me salió advertencia de almacenamiento justo al enviar","La app se cerró al despertar el teléfono","Pidió permiso de ubicación y se quedó pegada ahí","Mi operador está haciendo mantenimiento al parecer","La actualización automática reinició la app a medio mensaje","La pantalla se puso negra y se congeló","El lector de huella no funcionaba bien","Me limitaron la velocidad, no cargaba nada","Hay un aviso de error bloqueando todo","Estaba haciendo una copia de seguridad y bloqueó la entrada","Volví a la pantalla de inicio y perdí lo que escribí","Mi teléfono estaba reiniciándose","De alguna forma quedó en modo no molestar","Creo que la caché se corrompió","Debió ser hora pico de tráfico en la red","Me salió un error de carga de la nada","El botón no respondía por el tamaño de la pantalla","El teléfono se sobrecalentó y se limitó solo","Hay un problema reportado en la plataforma al parecer","Mi token de autenticación expiró al parecer","Se fue la señal justo cuando escribía el mensaje","Acabo de cambiar de teléfono, todavía me acostumbro","Se me olvidó desbloquear la pantalla, jaja","Estaba bajo tierra, cero señal","Estaba ajustando notificaciones y se me pasó","El navegador interno tiró un error de carga","El cambio de plan puso un límite temporal","Estaba organizando el almacenamiento","La actualización del sistema corría en segundo plano","Se me olvidó el patrón de bloqueo por un segundo","La batería estaba baja y entró en ahorro de energía","La sincronización no funcionó bien de mi lado","Tenía el modo avión activado durante un vuelo","Iba en el metro, la señal entraba y salía","No pude escribir por un error de la app","Parece que hubo retraso del lado del servidor","La pantalla táctil no respondió por un momento","Se me olvidó que tenía las notificaciones en silencio","El teléfono se quedó sin batería de tanto estar quieto","La sesión de inicio expiró al parecer","Puede que se haya duplicado por un corte de conexión","El brillo me hizo tocar mal, perdón","Estaba optimizando el almacenamiento en segundo plano","La app tardó tanto en cargar que dio timeout","Mi proveedor de internet está teniendo un mal día","Se cerró la pestaña del navegador antes de enviar","El código de verificación nunca llegó","La actualización de la app rompió algo de mi lado","Cerré la app sin querer a la fuerza mientras escribía","Se quedó cargando para siempre","El teléfono se reinició solo de la nada","Un proceso en segundo plano se comió toda la batería","Me limitaron por alguna razón","Se revocaron los permisos de notificación push no sé cómo","Mi teclado se cerró a mitad de la frase","La conexión se cortaba cada pocos segundos","Dice 'tiempo de espera agotado', qué raro","Parece que hay un problema conocido con esta versión","Mi cuenta quedó marcada para revisión temporalmente","Cambiaron la contraseña del Wi-Fi y no lo sabía","El reloj del teléfono estaba mal y rechazó la marca de tiempo","Me quedé atascado en una verificación captcha","La app cree que estoy desconectado aunque tengo conexión","Se llenó la memoria y la app se cerró sola","Un firewall de mi red bloqueó la solicitud al parecer"];
+
+/* ── ポルトガル語（ブラジル）フレーズ ── */
+const PH_PT = ["Por algum motivo não consigo enviar a mensagem…","Parece que a mensagem não chegou direito","Meu Wi-Fi fica caindo, desculpa","Continua dando erro de envio, que estranho","O app travou antes de eu conseguir responder","Não sei se isso vai chegar, meu sinal tá horrível","Estou com problemas técnicos do meu lado","Meu celular morreu no meio da resposta, sorry","Deu erro 503 aqui aparentemente","A rede tá com problema de novo","Estranho — aparece como enviado mas talvez não tenha ido","Minha operadora tá com problema hoje","Algo tá errado com minha conexão de dados","O app fica travando o tempo todo","Não consigo postar agora, não sei por quê","Fica dando timeout, que frustração","Minhas respostas ficam sumindo, deve ser um bug","Já tentei 3 vezes, torço para chegar","Tá dando um erro de rede muito esquisito","O servidor parece estar fora do ar pra mim","Meu VPN pode estar bagunçando tudo","O sinal caiu exatamente quando eu mandei, ops","Meu teclado fica bugando, desculpa","Tô com problema no meu plano de dados hoje","Meu celular tá estranho o dia todo","Problema de roaming, não consigo conectar direito","A plataforma parece bugada no meu aparelho","Minhas notificações tão todas bagunçadas","Algo nas minhas configurações deve estar errado","A fila de mensagens tá sobrecarregada aparentemente","Minha tela travou bem na hora de enviar","O app tá pedindo pra atualizar primeiro","Acho que esqueci de tirar o modo avião","O Bluetooth deve estar interferindo em alguma coisa","As permissões do app resetaram não sei por quê","Sem espaço de armazenamento, nem rascunho salvou","Tem alguma coisa errada com meu perfil","Quebrei a tela e fica difícil digitar agora","Só chegou o som da notificação, não a mensagem","Salvou como rascunho em vez de enviar","Acho que mandei pro chat errado sem querer","O app acabou de mandar um relatório de erro","Tá pedindo pra eu logar de novo","Meu celular tava em repouso, não percebi","A tela travou bem no meio do envio","Teve um aviso de manutenção da torre","Minha operadora parece ter limitado meus dados","O compartilhamento de internet não conectava direito","Me deslogou depois de limpar o cache","Fiquei perdido entre tantas notificações","Mudou a configuração de idioma e agora tá estranho","A rotação automática bagunçou meu toque, desculpa","Acho que era uma versão antiga sem suporte","Veio um aviso de armazenamento bem na hora de enviar","O app travou depois que o celular acordou","Pediu permissão de localização e ficou travado ali","Minha operadora deve estar em manutenção","A atualização automática reiniciou o app no meio","A tela ficou preta e travou","O leitor de digital não tava funcionando direito","Limitaram minha velocidade, não carregava nada","Tem um aviso de bug bloqueando tudo","Tava fazendo backup e bloqueou a digitação","Voltei pra tela inicial e perdi o que escrevi","Meu celular tava reiniciando","De alguma forma entrou no modo não perturbe","Acho que o cache corrompeu","Deve ter sido horário de pico na rede","Apareceu um erro de upload do nada","O botão não respondia por causa do tamanho da tela","O celular superaqueceu e se limitou sozinho","Tem um problema conhecido na plataforma ao que parece","Meu token de autenticação expirou aparentemente","O sinal caiu bem na hora de digitar a mensagem","Acabei de trocar de celular, ainda tô me acostumando","Esqueci de desbloquear a tela, kkkk","Tava no subterrâneo, sinal zero","Tava mexendo nas notificações e acabei perdendo","O navegador interno deu erro de carregamento","A mudança de plano colocou um limite temporário","Tava organizando o armazenamento","A atualização do sistema tava rodando em segundo plano","Esqueci o padrão de desbloqueio por um segundo","A bateria tava baixa e entrou no modo economia","A sincronização não funcionou direito aqui","Deixei o modo avião ligado durante um voo","Tava de metrô, o sinal ia e voltava","Não consegui digitar por causa de um bug do app","Parece que teve atraso do lado do servidor","A tela touch não respondeu por um momento","Esqueci que as notificações tavam no silencioso","O celular descarregou de tanto ficar parado","A sessão de login expirou aparentemente","Pode ter duplicado por causa de uma queda de conexão","O brilho me fez tocar errado, desculpa","Tava otimizando o armazenamento em segundo plano","O app demorou tanto pra carregar que deu timeout","Meu provedor de internet tá tendo um dia ruim","A aba do navegador fechou antes de enviar","O código de verificação nunca chegou","A atualização do app bagunçou algo aqui","Fechei o app à força sem querer no meio da digitação","Ficou carregando pra sempre","O celular reiniciou sozinho do nada","Um processo em segundo plano consumiu toda a bateria","Fui limitado por algum motivo","As permissões de notificação push foram revogadas não sei como","Meu teclado fechou no meio da frase","A conexão caía a cada poucos segundos","Diz 'tempo esgotado', muito estranho","Parece que tem um problema conhecido nessa versão","Minha conta ficou marcada pra revisão temporariamente","Mudaram a senha do Wi-Fi e eu não sabia","O relógio do celular tava errado e rejeitou o horário","Fiquei travado numa verificação de captcha","O app acha que tô offline mesmo conectado","A memória encheu e o app fechou sozinho","Um firewall da minha rede bloqueou o pedido aparentemente"];
+
+/* ── インドネシア語/マレー語フレーズ ── */
+const PH_ID = ["Entah kenapa pesannya tidak bisa terkirim…","Sepertinya pesannya tidak sampai dengan benar","Wi-Fi saya terus putus, maaf ya","Terus muncul error saat kirim, aneh banget","Aplikasinya crash sebelum saya bisa balas","Nggak tahu ini bakal sampai nggak, sinyal saya parah","Ada masalah teknis di pihak saya","HP saya mati di tengah-tengah balas pesan, sorry","Sepertinya ada Error 503 di sini","Jaringannya lagi bermasalah lagi nih","Aneh — katanya terkirim tapi mungkin nggak sampai ya?","Provider saya lagi gangguan hari ini","Ada yang salah sama koneksi data saya","Aplikasinya terus freeze belakangan ini","Kayaknya nggak bisa posting sekarang, nggak tahu kenapa","Terus timeout, frustrasi banget","Balasan saya terus hilang, kayaknya ada bug","Sudah coba 3 kali, semoga sampai","Dapat pesan error jaringan yang aneh","Server kayaknya lagi down di sisi saya","VPN saya mungkin lagi bermasalah","Sinyal putus pas saya pencet kirim, waduh","Keyboard saya terus error, maaf","Lagi ada masalah sama paket data saya","HP saya lagi aneh-aneh seharian","Masalah roaming, kayaknya nggak bisa konek dengan benar","Platform-nya kayaknya lagi bug di perangkat saya","Notifikasi saya semua kacau belakangan ini","Kayaknya ada yang salah di pengaturan saya","Antrian pesan lagi penuh kayaknya","Layar saya tiba-tiba freeze pas mau kirim","Aplikasinya minta update dulu","Kayaknya saya lupa matiin mode pesawat","Bluetooth mungkin lagi ganggu sinyal","Izin aplikasi kayaknya ke-reset sendiri","Penyimpanan penuh, draft aja nggak bisa kesimpan","Ada yang salah sama pengaturan profil saya","Layar saya retak, jadi susah ngetik","Cuma suara notifnya yang masuk, pesannya nggak ada","Malah kesimpen jadi draft, bukan terkirim","Kayaknya nggak sengaja kekirim ke chat yang salah","Aplikasinya baru aja kasih laporan crash","Diminta login ulang nih","HP saya lagi sleep mode, nggak sadar","Layar terkunci pas lagi proses kirim","Ada pemberitahuan maintenance menara sinyal tadi","Provider saya kayaknya lagi batasin data saya","Hotspot-nya nggak mau connect dengan benar","Ke-logout pas lagi bersihin cache","Ketimbun notifikasi, jadi nggak ngeh","Pengaturan bahasa berubah, sekarang jadi aneh","Auto-rotate bikin saya salah pencet, maaf","Kayaknya versi lama udah nggak didukung","Muncul peringatan penyimpanan pas mau kirim","Aplikasi crash setelah HP bangun dari sleep","Minta izin lokasi terus macet di situ","Provider saya kayaknya lagi maintenance sistem","Update otomatis bikin aplikasi restart di tengah jalan","Layar jadi hitam terus freeze","Sensor sidik jari nggak kebaca dengan benar","Kena pembatasan kecepatan, nggak bisa load apa-apa","Ada laporan bug yang nge-block semuanya","Lagi backup, jadi nggak bisa input apa-apa","Balik ke home screen, tulisan saya hilang","HP saya lagi restart","Entah kenapa masuk mode jangan ganggu","Kayaknya cache-nya korup","Mungkin lagi jam sibuk jaringan","Tiba-tiba muncul error upload","Tombolnya nggak respon karena ukuran layar","HP kepanasan jadi dibatasin otomatis","Katanya ada masalah yang udah diketahui di platform ini","Token autentikasi saya kayaknya expired","Sinyal hilang pas lagi ngetik pesan","Baru ganti HP, masih penyesuaian","Lupa buka kunci layar, wkwk","Lagi di basement, sinyal nol total","Lagi atur notifikasi, jadi kelewat","Browser bawaan aplikasi error pas loading","Ganti paket bikin kena batas sementara","Lagi beberes penyimpanan","Update sistem lagi jalan di background","Lupa pola kunci layar sebentar","Baterai low jadi masuk mode hemat daya","Sinkronisasi nggak jalan dengan benar di sini","Mode pesawat masih nyala dari naik pesawat","Lagi di kereta bawah tanah, sinyal putus-nyambung","Nggak bisa ngetik karena ada bug aplikasi","Kayaknya ada delay dari sisi server","Layar sentuh sempat nggak respon","Lupa kalau notifikasi lagi di-mute","HP kehabisan baterai gara-gara lama nggak dipakai","Sesi login kayaknya expired","Mungkin kekirim dobel gara-gara koneksi putus-putus","Pengaturan kecerahan bikin saya salah pencet","Lagi optimasi penyimpanan di background","Aplikasinya lama banget loading sampai timeout","Provider internet saya lagi bermasalah hari ini","Tab browser ketutup sebelum sempat kirim","Kode verifikasi nggak pernah masuk","Update aplikasi bikin ada yang error di sini","Nggak sengaja force close aplikasi pas lagi ngetik","Loading-nya muter terus nggak selesai-selesai","HP restart sendiri tiba-tiba","Ada proses background yang ngabisin baterai","Entah kenapa kena rate limit","Izin notifikasi push kayaknya kecabut sendiri","Aplikasi keyboard saya crash di tengah kalimat","Koneksi putus tiap beberapa detik","Muncul tulisan 'request timeout', aneh banget","Katanya ada known issue di versi ini","Akun saya kayaknya lagi ditandai buat review sementara","Password Wi-Fi diganti, saya nggak tahu","Jam di HP salah jadi timestamp-nya ditolak","Macet di verifikasi captcha","Aplikasi ngira saya offline padahal lagi connect","Memori penuh jadi aplikasinya force-quit sendiri","Firewall di jaringan saya kayaknya nge-block permintaan ini"];
+
+/* ── ロシア語フレーズ ── */
+const PH_RU = ["Почему-то сообщение не отправляется…","Кажется, сообщение не дошло нормально","Мой Wi-Fi постоянно отключается, извините","Всё время выдаёт ошибку при отправке, странно","Приложение закрылось до того, как я успел ответить","Не знаю, дойдёт ли это — сигнал ужасный","У меня технические проблемы с моей стороны","Телефон разрядился прямо во время ответа, sorry","Похоже, ошибка 503 на моей стороне","Сеть снова барахлит","Странно — показывает «отправлено», но, может, не дошло?","У моего оператора сегодня проблемы","Что-то не так с моим мобильным интернетом","Приложение постоянно зависает в последнее время","Почему-то не могу ничего опубликовать сейчас","Всё время выходит время ожидания, так раздражает","Мои ответы куда-то исчезают — наверное, баг","Уже пробовал 3 раза, надеюсь дойдёт","Получаю странное сообщение об ошибке сети","Похоже, сервер не работает с моей стороны","VPN может мешать соединению","Сигнал пропал прямо когда нажал отправить","Клавиатура постоянно глючит, извините","Сегодня проблемы с тарифным планом","Телефон весь день ведёт себя странно","Проблемы с роумингом, не могу нормально подключиться","Платформа, похоже, глючит на моём устройстве","Уведомления совсем перестали работать","Что-то не так с настройками","Очередь сообщений переполнена, видимо","Экран завис прямо в момент отправки","Приложение просит сначала обновиться","Кажется, забыл выключить авиарежим","Bluetooth, наверное, создаёт помехи","Разрешения приложения почему-то сбросились","Не хватает места — даже черновик не сохранился","Что-то не так с настройками профиля","Экран треснул, теперь трудно печатать","Пришёл только звук уведомления, а сообщения нет","Сохранилось в черновики вместо отправки","Кажется, случайно отправил не в тот чат","Приложение только что прислало отчёт о сбое","Просит войти заново","Телефон был в спящем режиме, не заметил","Экран заблокировался прямо посреди отправки","Было уведомление об обслуживании вышки","Похоже, оператор ограничил мой трафик","Раздача интернета не подключалась нормально","Вылетел из аккаунта после очистки кэша","Затерялось среди кучи уведомлений","Изменились языковые настройки, теперь всё странно работает","Автоповорот экрана сбил мой тап, извините","Видимо, версия слишком старая и не поддерживается","Появилось предупреждение о памяти прямо при отправке","Приложение вылетело после пробуждения телефона","Запросило геолокацию и зависло на этом","У оператора, похоже, технические работы","Автообновление перезапустило приложение на середине","Экран почернел и завис","Сканер отпечатка не сработал нормально","Включилось ограничение скорости, ничего не грузится","Всплыло окно с отчётом об ошибке, всё заблокировало","Шло резервное копирование, ввод был заблокирован","Вернулся на главный экран и потерял весь текст","Телефон как раз перезагружался","Почему-то включился режим «не беспокоить»","Кажется, кэш повредился","Видимо, час пик в сети","Внезапно вылезла ошибка загрузки","Кнопка не реагировала из-за размера экрана","Телефон перегрелся и сам себя ограничил","На платформе, похоже, известная проблема","Токен авторизации, видимо, истёк","Сигнал пропал прямо во время набора сообщения","Только что сменил телефон, ещё привыкаю","Забыл разблокировать экран, ха-ха","Был под землёй, сигнала вообще не было","Настраивал уведомления и пропустил это","Встроенный браузер выдал ошибку загрузки","Смена тарифа временно ограничила скорость","Разбирался с местом на телефоне","Обновление системы шло в фоновом режиме","На секунду забыл графический ключ","Батарея села, включился режим энергосбережения","Синхронизация не сработала с моей стороны","Авиарежим остался включённым после полёта","Ехал в метро, сигнал то пропадал, то появлялся","Не мог печатать из-за глюка в приложении","Похоже, была задержка на стороне сервера","Сенсорный экран на секунду не реагировал","Забыл, что уведомления были на беззвучном","Телефон разрядился оттого, что долго лежал без дела","Сессия входа, видимо, истекла","Возможно, продублировалось из-за обрыва связи","Настройка яркости сбила мой тап, извините","В фоне шла оптимизация памяти","Приложение так долго грузилось, что вышел таймаут","У моего провайдера сегодня явно не задался день","Вкладка браузера закрылась перед отправкой","Код подтверждения так и не пришёл","Обновление приложения что-то сломало у меня","Случайно закрыл приложение принудительно во время набора","Загрузка крутилась бесконечно","Телефон сам перезагрузился непонятно почему","Какой-то фоновый процесс съел всю батарею","Почему-то попал под ограничение по частоте запросов","Разрешение на push-уведомления почему-то отозвалось","Клавиатурное приложение вылетело посреди фразы","Соединение обрывалось каждые несколько секунд","Пишет «время ожидания истекло», очень странно","Похоже, в этой версии известная проблема","Аккаунт временно помечен на проверку","Пароль от Wi-Fi сменили, а я не знал","Часы на телефоне сбились, и метку времени отклонили","Застрял на проверке капчи","Приложение думает, что я офлайн, хотя соединение есть","Память переполнилась, и приложение само закрылось","Похоже, файрвол в моей сети заблокировал запрос"];
+
+
+/* ── Mini Mantra データ ── */
+const MANTRA_VERB = {
+  A:['Aspire','Achieve'], B:['Build','Believe'], C:['Create','Cheer up'], D:['Dream','Dare'], E:['Enjoy','Excel'],
+  F:['Flourish','Fight'], G:['Grow','Glow'], H:['Hope','Hustle'], I:['Inspire','Ignite'], J:['Join','Jump in'],
+  K:['Keep','Keep going'], L:['Lead','Laugh'], M:['Make','Move on'], N:['Nurture','Never give up'], O:['Open','Overcome'],
+  P:['Progress','Push'], Q:['Quest','Quiet your doubts'], R:['Rise','Reach'], S:['Shine','Smile'], T:['Thrive','Try again'],
+  U:['Unite','Uplift'], V:['Value','Venture'], W:['Win','Wonder'], X:['Xplore','X-ceed'], Y:['Yearn','Yell yes'], Z:['Zoom','Zest up']
+};
+const MANTRA_ADJ = {
+  A:['Awwwwww!','Amaaaazing!','Adveeeenture!','Achieeeeeve!'],
+  B:['Boooooon!','Breeeeeze!','Beeeeeeautiful!','Briiiilliant!'],
+  C:['Cheeeeeer!','Cooooool!','Celebrateeeee!','Congraaaaats!'],
+  D:['Doooooon!','Daaaaaazzling!','Dreeeeeam!','Delightfuuuul!'],
+  E:['Excelleeeeeent!','Eeeeeasy!','Energggggy!','Enjoyyyyy!'],
+  F:['Foooooon!','Faaaaantastic!','Freeeeeeedom!','Fiiiiiine!'],
+  G:['Greeeeat!','Gloooooow!','Goooooo!','Gratefuuuul!'],
+  H:['Hoooooon!','Hooooooray!','Heeeeey!','Happyyyyyy!'],
+  I:['Incredibleeeee!','Inspiiiiire!','Impressssive!','Illuminaaaate!'],
+  J:['Joooooon!','Joyyyyyyy!','Jaaaaackpot!','Jubiiiiilant!'],
+  K:['Koooooon!','Kiiiiind!','Keeeeep going!','Kooooool!'],
+  L:["Leeeeet's gooooo!",'Legeeeeeend!','Lovelyyyyy!','Liiiiight!'],
+  M:['Moooooon!','Maaaaagic!','Maaaaaaarvelous!','Miracllllle!'],
+  N:['Noooooon!','Niceeeee!','Nobleeeee!','Neeeext level!'],
+  O:['Ooooooh!','Outstaaaaanding!','Opportuuuunity!','Overjoyyyyyed!'],
+  P:['Poooooon!','Peeeeerfect!','Poweeeeer!','Proooooud!'],
+  Q:['Qoooooo!','Qualityyyyy!','Queeeeeen!','Queeeeest!'],
+  R:['Roooooon!','Riiiiiiise!','Reeeeemarkable!','Roooooocket!'],
+  S:['Soooooon!','Sooooouper!','Sweeeeeet!','Smiiiiiiile!'],
+  T:['Toooooon!','Terrrrrific!','Thriiiiiive!','Tadaaaaaa!'],
+  U:['Upliiiiift!','Unbelieeeeevable!','Uniteeeee!','Upwaaaaard!'],
+  V:['Voooooon!','Viiiiictory!','Vaaaaalue!','Viiiiibes!'],
+  W:['Woooooon!','Woooooow!','Wondeeeeeerful!','Weeeeeee!'],
+  X:['Xoooooon!','X-traaaaaordinary!','X-ceeeeeed!','X-plooooore!'],
+  Y:['Yoooooon!','Yaaaaaay!','Yoooooohooo!','Yippeeeee!'],
+  Z:['Zoooooon!','Zeeeeeen!','Zoooooom!','Ziiiiiing!']
+};
+const MANTRA_INTRO = {
+  ja: ["それは__だ！","何て__だろう！","いわゆる__だね！","これぞ__だ！","まさに__だ！","言うなれば__だ！","それこそ__だ！","噂の__だよ！","これが__というやつだ！","想像してみて、__だ！","感じてみて、__を！","紛れもなく__だ！","純粋な__だ！","堂々たる__だ！","これが__の正体だ！","ある意味__だ！","誰が見ても__だ！","世に言う__だね！","掛け値なしの__だ！","正真正銘の__だ！"],
+  en: ["That's __!","What a __!","It's like __!","Call it __!","This is __!","Behold, __!","We call this __!","Simply put, __!","In short, __!","None other than __!","Some say __!","They call it __!","Picture this: __!","Imagine __!","Feel the __!","Witness __!","Presenting __!","Nothing but __!","Pure __!","Straight-up __!"],
+  zh: ["那就是__！","真是__啊！","所谓的__就是这样！","这才是__！","简直就是__！","也就是说，__！","换句话说，__！","人称__！","这就是传说中的__！","想象一下，__！","感受一下__！","毫无疑问是__！","纯粹的__！","堂堂正正的__！","这才是__的真面目！","可以说是__！","谁看了都说__！","世人所说的__！","不折不扣的__！","货真价实的__！"],
+  ko: ["그게 바로 __！","이런 __라니！","말하자면 __야！","이게 바로 __！","그야말로 __！","쉽게 말해 __！","한마디로 __！","다름 아닌 __！","사람들이 말하는 __！","상상해봐, __！","느껴봐, __！","틀림없는 __！","순수한 __！","당당한 __！","이게 바로 __의 정체！","어떤 의미로는 __！","누가 봐도 __！","세상이 말하는 __！","흠잡을 데 없는 __！","진짜배기 __！"],
+  es: ["¡Eso es __!","¡Qué __!","¡Es como __!","¡Llámalo __!","¡Esto es __!","¡He aquí __!","¡A esto le llamamos __!","¡En pocas palabras, __!","¡En resumen, __!","¡Nada menos que __!","¡Dicen que es __!","¡Lo llaman __!","¡Imagina __!","¡Imagínate __!","¡Siente __!","¡Sé testigo de __!","¡Presentando __!","¡No es más que __!","¡Puro __!","¡Sencillamente __!"],
+  pt: ["Isso é __!","Que __!","É tipo __!","Chame de __!","Isto é __!","Eis __!","A isso chamamos __!","Resumindo, __!","Em suma, __!","Nada menos que __!","Dizem que é __!","Chamam de __!","Imagine __!","Imagine só __!","Sinta __!","Testemunhe __!","Apresentando __!","Nada mais que __!","Puro __!","Simplesmente __!"],
+  id: ["Itulah __!","Sungguh __!","Bisa dibilang __!","Sebut saja __!","Inilah __!","Lihatlah, __!","Kami menyebutnya __!","Singkatnya, __!","Pada intinya, __!","Tak lain adalah __!","Katanya itu __!","Mereka menyebutnya __!","Bayangkan __!","Coba bayangkan __!","Rasakan __!","Saksikan __!","Mempersembahkan __!","Tak lain hanyalah __!","Murni __!","Sungguh-sungguh __!"],
+  ru: ["Вот это __!","Какой __!","Это как __!","Назови это __!","Это __!","Узрите __!","Мы называем это __!","Короче говоря, __!","Одним словом, __!","Не что иное, как __!","Говорят, это __!","Это называют __!","Представь __!","Только представь __!","Почувствуй __!","Узри __!","Представляем __!","Не что иное, как __!","Чистый __!","Настоящий __!"]
+};
+const MANTRA_SOTO = {
+  ja: ["つまり","いわゆる","言い換えると","要するに","端的に言うと"],
+  en: ["In other words","Basically","Simply put","Which means","To put it plainly"],
+  zh: ["也就是说","换句话说","简单来说","说白了","归根结底"],
+  ko: ["즉","다시 말해","간단히 말하면","쉽게 말해서","요컨대"],
+  es: ["En otras palabras","Básicamente","Dicho de forma simple","Lo que significa","Para decirlo claro"],
+  pt: ["Em outras palavras","Basicamente","Dito de forma simples","O que significa","Pra ser direto"],
+  id: ["Dengan kata lain","Pada dasarnya","Singkatnya","Yang berarti","Untuk lebih jelasnya"],
+  ru: ["Другими словами","По сути","Проще говоря","Это значит","Если коротко"]
+};
+const ALPHA26 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+function pickMantraLetters(input){
+  const raw = input || '';
+  const totalLen = [...raw].length; // 入力全体の文字数（記号・日本語等すべて含む）
+  const targetCount = totalLen > 0 ? (totalLen <= 5 ? 2 : 3) : (Math.random() < 0.5 ? 2 : 3);
+
+  // 入力からアルファベットのみ抽出、大文字化
+  const letters = raw.toUpperCase().replace(/[^A-Z]/g,'');
+  let chosen = [];
+  if(letters.length >= 2){
+    chosen.push(letters[0]); // 最初の文字を必ず含める
+    const rest = letters.slice(1).split('');
+    while(chosen.length < targetCount && rest.length){
+      const idx = Math.floor(Math.random()*rest.length);
+      const c = rest.splice(idx,1)[0];
+      if(!chosen.includes(c)) chosen.push(c);
+      if(rest.length===0) break;
+    }
+    // 文字種が足りない場合はランダム補充
+    while(chosen.length < targetCount){
+      const r = ALPHA26[Math.floor(Math.random()*26)];
+      if(!chosen.includes(r)) chosen.push(r);
+    }
+  } else if(letters.length === 1){
+    chosen.push(letters[0]);
+    while(chosen.length < targetCount){
+      const r = ALPHA26[Math.floor(Math.random()*26)];
+      if(!chosen.includes(r)) chosen.push(r);
+    }
+  } else {
+    // アルファベットを含まない入力（日本語のみ等）・入力なし → 完全ランダム
+    while(chosen.length < targetCount){
+      const r = ALPHA26[Math.floor(Math.random()*26)];
+      if(!chosen.includes(r)) chosen.push(r);
+    }
+  }
+  return chosen;
+}
+
+function buildMiniMantra(input, langCode, presetLetters){
+  const l = MANTRA_INTRO[langCode] ? langCode : 'en';
+  const letters = presetLetters || pickMantraLetters(input);
+  const code = letters.join('');
+  const intro = rnd(MANTRA_INTRO[l]).replace('__', `"${code}"`);
+  const soto = rnd(MANTRA_SOTO[l]);
+  const useVerb = Math.random() < 0.5;
+  let line;
+  if(useVerb){
+    line = letters.map(x => `${rnd(MANTRA_VERB[x]||['Win'])}!`).join(' ');
+  } else {
+    line = letters.map(x => rnd(MANTRA_ADJ[x]||['Yay!'])).join(' ');
+  }
+  return `${intro} ${soto}, ${line}`;
+}
+
+const CONF = {
+  ja: {
+    langLabel:'言語 / 言語選択', modeLabel:'文字モード', typeLabel:'変換タイプ', genLabel:'変換する', copyLabel:'コピー', resultLabel:'結果', bgmOnLabel:'BGM オン', bgmOffLabel:'BGM オフ', clearLabel:'クリア', volumeLabel:'音量', bgmLoadingLabel:'読み込み中...',
+    inputLabel:'書き殴る（任意・140字まで）',
+    placeholder:'ここに気持ちを書き殴ってください。入力した文字数に合わせて変換されます。',
+    badgeEmpty:'入力なし → ランダム生成', badgeActive:'入力あり → 文字数連動',
+    phrSuffix:'パターン',
+    modes:[{id:'half',label:'半角（海外SNS向け）'},{id:'full',label:'全角（日本語SNS向け）'}],
+    types:[{id:4,label:'① Mini Mantra',sub:'英語の前向き呪文に変換'},{id:3,label:'② 送信できないフレーズ',sub:'言い訳系 100+パターン'},{id:2,label:'③ 文字化け',sub:'似た記号に置換'},{id:1,label:'④ 顔文字',sub:'(ToT) (^^;) など'}],
+    gen:(mode,type,len,raw)=>_genJa(mode,type,len,raw),
+    phrCount:(mode)=>mode==='half'?PH_JA_H.length:PH_JA_F.length
+  },
+  en: {
+    langLabel:'Language / Region', modeLabel:null, typeLabel:'Conversion type', genLabel:'Convert', copyLabel:'Copy', resultLabel:'Result', bgmOnLabel:'BGM On', bgmOffLabel:'BGM Off', clearLabel:'Clear', volumeLabel:'Volume', bgmLoadingLabel:'Loading...',
+    inputLabel:'Vent (optional, max 140 chars)',
+    placeholder:'Type here. Output length will match your input.',
+    badgeEmpty:'No input → random', badgeActive:'Input detected → length-matched',
+    phrSuffix:' patterns',
+    modes:[],
+    types:[{id:4,label:'① Mini Mantra',sub:'turns words into a hype chant'},{id:3,label:'② "Can\'t send" phrases',sub:'100+ patterns'},{id:2,label:'③ Garbled text',sub:'symbol substitution'},{id:1,label:'④ Kaomoji',sub:'(ToT) (^^;) etc.'}],
+    gen:(mode,type,len,raw)=>_genEn(type,len,raw),
+    phrCount:()=>PH_EN.length
+  },
+  zh: {
+    langLabel:'语言 / 地区', modeLabel:'字符模式', typeLabel:'转换类型', genLabel:'转换', copyLabel:'复制', resultLabel:'结果', bgmOnLabel:'BGM 开', bgmOffLabel:'BGM 关', clearLabel:'清除', volumeLabel:'音量', bgmLoadingLabel:'加载中...',
+    inputLabel:'发泄一下（可选，最多140字）',
+    placeholder:'在这里发泄吧。输出长度将与您的输入字数匹配。',
+    badgeEmpty:'无输入 → 随机生成', badgeActive:'有输入 → 按字数匹配',
+    phrSuffix:' 种说法',
+    modes:[{id:'full',label:'全角（中文符号）'},{id:'half',label:'半角（英文符号）'}],
+    types:[{id:4,label:'① Mini Mantra',sub:'转换成英文加油咒语'},{id:3,label:'② "发不出去"短语',sub:'100+种说法'},{id:2,label:'③ 乱码',sub:'相似符号替换'},{id:1,label:'④ 颜文字',sub:'(ToT) (^^;) 等'}],
+    gen:(mode,type,len,raw)=>_genZh(mode,type,len,raw),
+    phrCount:()=>PH_ZH.length
+  },
+  ko: {
+    langLabel:'언어 / 지역', modeLabel:null, typeLabel:'변환 유형', genLabel:'변환하기', copyLabel:'복사', resultLabel:'결과', bgmOnLabel:'BGM 켜짐', bgmOffLabel:'BGM 꺼짐', clearLabel:'지우기', volumeLabel:'음량', bgmLoadingLabel:'로딩 중...',
+    inputLabel:'마음껏 써보세요（선택・140자 이내）',
+    placeholder:'여기에 감정을 쏟아내세요. 입력한 글자 수에 맞춰 변환됩니다.',
+    badgeEmpty:'입력 없음 → 랜덤 생성', badgeActive:'입력 있음 → 글자 수 연동',
+    phrSuffix:'개 패턴',
+    modes:[],
+    types:[{id:4,label:'① Mini Mantra',sub:'영어 긍정 주문으로 변환'},{id:3,label:'② 전송 실패 멘트',sub:'100개 패턴'},{id:2,label:'③ 글자 깨짐',sub:'유사 기호로 치환'},{id:1,label:'④ 이모티콘',sub:'(ToT) (^^;) 등'}],
+    gen:(mode,type,len,raw)=>_genCommon(type,len,PH_KO,raw,'ko'),
+    phrCount:()=>PH_KO.length
+  },
+  es: {
+    langLabel:'Idioma / Región', modeLabel:null, typeLabel:'Tipo de conversión', genLabel:'Convertir', copyLabel:'Copiar', resultLabel:'Resultado', bgmOnLabel:'BGM activado', bgmOffLabel:'BGM desactivado', clearLabel:'Borrar', volumeLabel:'Volumen', bgmLoadingLabel:'Cargando...',
+    inputLabel:'Desahógate（opcional, máx. 140 caracteres）',
+    placeholder:'Escribe aquí. La longitud del resultado coincidirá con tu entrada.',
+    badgeEmpty:'Sin entrada → aleatorio', badgeActive:'Con entrada → según longitud',
+    phrSuffix:' patrones',
+    modes:[],
+    types:[{id:4,label:'① Mini Mantra',sub:'lo convierte en un cántico positivo'},{id:3,label:'② Frases "no envié"',sub:'100+ patrones'},{id:2,label:'③ Texto corrupto',sub:'sustitución de símbolos'},{id:1,label:'④ Kaomoji',sub:'(ToT) (^^;) etc.'}],
+    gen:(mode,type,len,raw)=>_genCommon(type,len,PH_ES,raw,'es'),
+    phrCount:()=>PH_ES.length
+  },
+  pt: {
+    langLabel:'Idioma / Região', modeLabel:null, typeLabel:'Tipo de conversão', genLabel:'Converter', copyLabel:'Copiar', resultLabel:'Resultado', bgmOnLabel:'BGM ativado', bgmOffLabel:'BGM desativado', clearLabel:'Limpar', volumeLabel:'Volume', bgmLoadingLabel:'Carregando...',
+    inputLabel:'Desabafe（opcional, máx. 140 caracteres）',
+    placeholder:'Digite aqui. O tamanho do resultado vai coincidir com sua entrada.',
+    badgeEmpty:'Sem entrada → aleatório', badgeActive:'Com entrada → por tamanho',
+    phrSuffix:' padrões',
+    modes:[],
+    types:[{id:4,label:'① Mini Mantra',sub:'vira um canto positivo'},{id:3,label:'② Frases "não enviei"',sub:'100+ padrões'},{id:2,label:'③ Texto corrompido',sub:'substituição de símbolos'},{id:1,label:'④ Kaomoji',sub:'(ToT) (^^;) etc.'}],
+    gen:(mode,type,len,raw)=>_genCommon(type,len,PH_PT,raw,'pt'),
+    phrCount:()=>PH_PT.length
+  },
+  id: {
+    langLabel:'Bahasa / Wilayah', modeLabel:null, typeLabel:'Jenis konversi', genLabel:'Konversi', copyLabel:'Salin', resultLabel:'Hasil', bgmOnLabel:'BGM Aktif', bgmOffLabel:'BGM Nonaktif', clearLabel:'Hapus', volumeLabel:'Volume', bgmLoadingLabel:'Memuat...',
+    inputLabel:'Luapkan perasaanmu（opsional, maks. 140 karakter）',
+    placeholder:'Ketik di sini. Panjang hasil akan disesuaikan dengan panjang inputmu.',
+    badgeEmpty:'Tanpa input → acak', badgeActive:'Ada input → sesuai panjang',
+    phrSuffix:' pola',
+    modes:[],
+    types:[{id:4,label:'① Mini Mantra',sub:'jadi mantra positif bahasa Inggris'},{id:3,label:'② Frasa "gagal kirim"',sub:'100+ pola'},{id:2,label:'③ Teks rusak',sub:'substitusi simbol'},{id:1,label:'④ Kaomoji',sub:'(ToT) (^^;) dll.'}],
+    gen:(mode,type,len,raw)=>_genCommon(type,len,PH_ID,raw,'id'),
+    phrCount:()=>PH_ID.length
+  },
+  ru: {
+    langLabel:'Язык / Регион', modeLabel:null, typeLabel:'Тип преобразования', genLabel:'Преобразовать', copyLabel:'Копировать', resultLabel:'Результат', bgmOnLabel:'BGM включен', bgmOffLabel:'BGM выключен', clearLabel:'Очистить', volumeLabel:'Громкость', bgmLoadingLabel:'Загрузка...',
+    inputLabel:'Выплесни эмоции（необязательно, макс. 140 символов）',
+    placeholder:'Пиши здесь. Длина результата будет соответствовать длине ввода.',
+    badgeEmpty:'Без ввода → случайно', badgeActive:'Есть ввод → по длине',
+    phrSuffix:' вариантов',
+    modes:[],
+    types:[{id:4,label:'① Mini Mantra',sub:'превращает в позитивную мантру'},{id:3,label:'② Фразы "не отправил"',sub:'100+ вариантов'},{id:2,label:'③ Искажённый текст',sub:'замена символами'},{id:1,label:'④ Каомодзи',sub:'(ToT) (^^;) и т.д.'}],
+    gen:(mode,type,len,raw)=>_genCommon(type,len,PH_RU,raw,'ru'),
+    phrCount:()=>PH_RU.length
+  }
+};
+
+/* ===================== GENERATORS ===================== */
+const rnd = a=>a[~~(Math.random()*a.length)];
+const build = (len,pool,def)=>{ if(len<=0)len=def+~~(Math.random()*12); let o=''; for(let i=0;i<len;i++)o+=pool[~~(Math.random()*pool.length)]; return o; };
+
+/* 20文字を超えるたびにランダムで混ぜ込む特殊AA */
+const SPECIAL_AA = [
+  "∈( ´___________` )∋",
+  "⊂≡≡≡( ^ω^)≡≡⊃ Boooon",
+  "Yee----(°∀°)----ees!!",
+  "(∩ °∀°)⊃⊂(°∀° ∩) Same here!",
+  "(∩ ´∀`)⊃⊂(´∀` ∩) Same here!"
+];
+
+const buildKao=(len,arr)=>{
+  if(len<=0)return rnd(arr);
+  let o='', c=0, sinceSpecial=0, threshold=20;
+  while(c<len){
+    let piece;
+    if(sinceSpecial>=threshold){
+      piece = rnd(SPECIAL_AA);
+      sinceSpecial = 0;
+      threshold = 20; // 次の20文字超過まで
+    } else {
+      piece = rnd(arr);
+    }
+    o += (o?' ':'') + piece;
+    c += piece.length + 1;
+    sinceSpecial += piece.length + 1;
+  }
+  return o.trim().slice(0, len+30);
+};
+const corruptHalf=(len)=>{ if(len<=0)len=12+~~(Math.random()*10); let o=''; for(let i=0;i<len;i++){const x=Math.random();o+=x<0.2?'\u200B':x<0.38?'\uFFFD':x<0.55?['@','3','!','0','$','#','%','^','&','*'][~~(Math.random()*10)]:C_BASE[~~(Math.random()*C_BASE.length)];} return o; };
+const corruptJa=(len)=>{ if(len<=0)len=10+~~(Math.random()*8); let o=''; for(let i=0;i<len;i++)o+=Math.random()<0.5?C_KANA[~~(Math.random()*C_KANA.length)]:C_SUBJA[~~(Math.random()*C_SUBJA.length)]; return o; };
+const corruptZh=(len)=>{ if(len<=0)len=10+~~(Math.random()*8); let o=''; for(let i=0;i<len;i++)o+=Math.random()<0.5?C_ZH[~~(Math.random()*C_ZH.length)]:C_SUBZH[~~(Math.random()*C_SUBZH.length)]; return o; };
+
+function _genCommon(type,len,phrases,raw,langCode){
+  if(type===4)return buildMiniMantra(raw,langCode);
+  if(type===3)return rnd(phrases);
+  if(type===1)return buildKao(len,HALF_KAO);
+  return corruptHalf(len);
+}
+
+function _genJa(mode,type,len,raw){
+  if(type===4)return buildMiniMantra(raw,'ja');
+  if(type===3)return mode==='half'?rnd(PH_JA_H):rnd(PH_JA_F);
+  if(mode==='half'){
+    if(type===1)return buildKao(len,HALF_KAO);
+    return corruptHalf(len);
+  } else {
+    if(type===1)return buildKao(len,HALF_KAO);
+    return corruptJa(len);
+  }
+}
+function _genEn(type,len,raw){
+  if(type===4)return buildMiniMantra(raw,'en');
+  if(type===3)return rnd(PH_EN);
+  if(type===1)return buildKao(len,HALF_KAO);
+  return corruptHalf(len);
+}
+function _genZh(mode,type,len,raw){
+  if(type===4)return buildMiniMantra(raw,'zh');
+  if(type===3)return rnd(PH_ZH);
+  if(mode==='full'){
+    if(type===1)return buildKao(len,HALF_KAO);
+    return corruptZh(len);
+  } else {
+    if(type===1)return buildKao(len,HALF_KAO);
+    return corruptHalf(len);
+  }
+}
+
+/* ===================== STATE ===================== */
+let lang='ja', mode='half', type=4;
+
+/* BGM関連の状態変数（setLangより前に必ず宣言しておく必要がある） */
+let bgmPlayer = null;
+let bgmStarted = false;
+let bgmOn = false;
+let bgmLoading = false;
+let currentTrackIndex = 0;
+let availableTracks = [];
+let seekTimer = null;
+let suppressOnStop = false;
+let trackOffset = 0;
+let trackStartTime = 0;
+
+/* ===================== CHAR COUNT ===================== */
+function countChars(str){ let c=0; for(const ch of str)c+=ch.charCodeAt(0)>255?1:0.5; return Math.ceil(c); }
+
+function onInput(){
+  const ta=document.getElementById('inputText');
+  let val=ta.value;
+  let count=countChars(val);
+  if(count>140){ let t='',c=0; for(const ch of val){const w=ch.charCodeAt(0)>255?1:0.5;if(c+w>140)break;t+=ch;c+=w;} ta.value=t; val=t; }
+  const cur=countChars(val);
+  const el=document.getElementById('charCount');
+  el.textContent=cur+' / 140';
+  el.className='char-count'+(cur>=130?' over':cur>=100?' warn':'');
+  document.getElementById('clearBtn').classList.toggle('active', val.length>0);
+  const badge=document.getElementById('inputBadge');
+  const c=CONF[lang];
+  badge.textContent=val.length>0?c.badgeActive:c.badgeEmpty;
+  badge.className='badge'+(val.length>0?' active-input':'');
+}
+
+function clearInput(){ document.getElementById('inputText').value=''; onInput(); }
+
+/* ===================== GENERATE ===================== */
+function generate(){
+  const val=document.getElementById('inputText').value;
+  const len=val.length>0?countChars(val):0;
+  const mantraBadge=document.getElementById('mantraLetters');
+  let out;
+  if(type===4){
+    const letters=pickMantraLetters(val);
+    mantraBadge.textContent=letters.join('');
+    mantraBadge.style.display='inline-block';
+    out = buildMiniMantra(val, lang, letters);
+  } else {
+    mantraBadge.style.display='none';
+    out=CONF[lang].gen(mode,type,len,val);
+  }
+  const box=document.getElementById('outputBox');
+  box.className='output-box'+((type===3||type===4)?' phrase':'');
+  box.textContent=out||'—';
+  updatePhraseCount();
+}
+
+function copyOutput(){
+  const text=document.getElementById('outputBox').textContent;
+  if(!text||text==='—'||text.includes('変換タイプ'))return;
+  navigator.clipboard.writeText(text).then(()=>{
+    const b=document.getElementById('copiedBadge');
+    b.style.display='inline';
+    setTimeout(()=>b.style.display='none',1800);
+  });
+}
+
+function updatePhraseCount(){
+  const el=document.getElementById('phraseCnt');
+  if(type===3){ el.textContent=CONF[lang].phrCount(mode)+CONF[lang].phrSuffix; el.style.display='inline'; }
+  else el.style.display='none';
+}
+
+/* ===================== RENDER UI ===================== */
+/* ===================== LANGUAGE LIST ===================== */
+const LANG_LIST = [
+  { id:'ja', flag:'🇯🇵', name:'日本語' },
+  { id:'en', flag:'🇺🇸', name:'English' },
+  { id:'zh', flag:'🇨🇳', name:'中文' },
+  { id:'ko', flag:'🇰🇷', name:'한국어' },
+  { id:'es', flag:'🇪🇸', name:'Español' },
+  { id:'pt', flag:'🇧🇷', name:'Português' },
+  { id:'id', flag:'🇮🇩', name:'Indonesia' },
+  { id:'ru', flag:'🇷🇺', name:'Русский' },
+];
+
+function shuffleArray(arr){
+  const a = [...arr];
+  for(let i=a.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function renderLangButtons(){
+  const g = document.getElementById('langGroup');
+  g.innerHTML = '';
+  const shuffled = shuffleArray(LANG_LIST);
+  shuffled.forEach(l=>{
+    const b = document.createElement('button');
+    b.className = 'btn' + (l.id===lang?' active':'');
+    b.dataset.lang = l.id;
+    b.textContent = `${l.flag} ${l.name}`;
+    b.onclick = () => setLang(l.id);
+    g.appendChild(b);
+  });
+  return shuffled[0].id; // 左上（先頭）に来た言語
+}
+
+/* ===================== TAGLINES ===================== */
+const TAGLINES = {
+  ja: 'アンチコメントを、受け流し( ^ω^ )〜パルプンテ( °∀° )に！',
+  en: 'Brush off mean comments( ^ω^ )~ or hocus pocus them( °∀° )!',
+  zh: '把难听的话，轻轻带过( ^ω^ )〜变成摸不着头脑的魔咒( °∀° )！',
+  ko: '악플은 가볍게 흘려보내고( ^ω^ )〜 알 수 없는 주문으로( °∀° )!',
+  es: 'Deja pasar los comentarios feos( ^ω^ )~ ¡o conviértelos en magia random( °∀° )!',
+  pt: 'Deixe os comentários ruins passarem( ^ω^ )~ ou vire magia aleatória( °∀° )!',
+  id: 'Biarkan komentar jahat berlalu( ^ω^ )~ atau jadikan mantra acak( °∀° )!',
+  ru: 'Пропускай мимо недобрые слова( ^ω^ )~ или преврати их в случайную магию( °∀° )!'
+};
+
+function setLang(l){
+  lang=l;
+  document.querySelectorAll('#langGroup .btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===l));
+  const c=CONF[l];
+  document.getElementById('taglineText').textContent=TAGLINES[l]||TAGLINES.ja;
+  document.getElementById('langSectionLabel').textContent=c.langLabel;
+  document.getElementById('genBtn').textContent=c.genLabel;
+  document.getElementById('copyBtn').textContent=c.copyLabel;
+  document.getElementById('resultLabel').textContent=c.resultLabel;
+  document.getElementById('inputLabel').textContent=c.inputLabel;
+  document.getElementById('inputText').placeholder=c.placeholder;
+  document.getElementById('clearBtn').textContent=c.clearLabel;
+  document.getElementById('volumeLabelText').textContent=c.volumeLabel;
+  document.getElementById('bgmToggleLabel').textContent = bgmOn ? c.bgmOnLabel : c.bgmOffLabel;
+  const mw=document.getElementById('modeWrap');
+  if(!c.modeLabel||c.modes.length===0){ mw.style.display='none'; mode='half'; }
+  else { mw.style.display=''; document.getElementById('modeLabel').textContent=c.modeLabel; mode=c.modes[0].id; }
+  document.getElementById('typeLabel').textContent=c.typeLabel;
+  renderModes(); type=4; renderTypes();
+  onInput(); generate();
+}
+
+function setMode(m){ mode=m; document.querySelectorAll('#modeGroup .btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m)); generate(); }
+function setType(t){ type=t; document.querySelectorAll('#typeGrid .type-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.type)===t)); updatePhraseCount(); generate(); }
+
+function renderModes(){
+  const g=document.getElementById('modeGroup'); g.innerHTML='';
+  CONF[lang].modes.forEach(m=>{
+    const b=document.createElement('button');
+    b.className='btn'+(m.id===mode?' active':'');
+    b.dataset.mode=m.id; b.textContent=m.label;
+    b.onclick=()=>setMode(m.id); g.appendChild(b);
+  });
+}
+
+function renderTypes(){
+  const g=document.getElementById('typeGrid'); g.innerHTML='';
+  CONF[lang].types.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='type-btn'+(t.id===type?' active':'');
+    b.dataset.type=t.id;
+    b.innerHTML=`${t.label}<small>${t.sub}</small>`;
+    b.onclick=()=>setType(t.id); g.appendChild(b);
+  });
+}
+
+/* ===================== INIT ===================== */
+document.getElementById('inputText').addEventListener('input',onInput);
+
+const initialLang = renderLangButtons();
+setLang(initialLang);
+
+/* ===================== BGM (multi-track key-switching loop) ===================== */
+/*
+  音源リスト。1曲目は必ず存在するbgm_00.mp3（オリジナルキー）。
+  今後 bgm_p03.mp3（+3半音）, bgm_m05.mp3（-5半音）等を追加していく。
+  ファイルが存在しない場合は自動的にスキップされる。
+*/
+const BGM_TRACKS = [
+  { file: 'bgm_00.mp3',  label: 'bgm_00（±0）' },
+  { file: 'bgm_p02.mp3', label: 'bgm_p02（+2）' },
+  { file: 'bgm_p05.mp3', label: 'bgm_p05（+5）' },
+  { file: 'bgm_p09.mp3', label: 'bgm_p09（+9）' },
+  { file: 'bgm_p12.mp3', label: 'bgm_p12（+12）' },
+  { file: 'bgm_m05.mp3', label: 'bgm_m05（-5）' },
+  // 今後追加する場合はここに { file: 'bgm_xxx.mp3', label: '...' } を追記
+];
+
+function fmtTime(sec){
+  if(!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + String(s).padStart(2, '0');
+}
+
+async function checkTrackExists(url){
+  try{
+    const res = await fetch(url, { method: 'HEAD' });
+    return res.ok;
+  } catch(e){ return false; }
+}
+
+async function buildAvailableTrackList(){
+  const list = [];
+  for(const t of BGM_TRACKS){
+    if(await checkTrackExists(t.file)) list.push(t);
+  }
+  if(list.length === 0) list.push(BGM_TRACKS[0]); // fallback
+  return list;
+}
+
+function pickNextTrackIndex(){
+  if(availableTracks.length <= 1) return 0;
+  let next;
+  do { next = Math.floor(Math.random() * availableTracks.length); }
+  while(next === currentTrackIndex);
+  return next;
+}
+
+function loadTrack(index){
+  return new Promise((resolve, reject) => {
+    const track = availableTracks[index];
+    if(bgmPlayer){ bgmPlayer.dispose(); }
+    bgmPlayer = new Tone.Player({
+      url: track.file,
+      loop: false,
+      autostart: false,
+      onload: () => resolve(),
+      onerror: (e) => reject(e),
+      onstop: () => {
+        // 自然終了時のみ次の曲へ（シーク・手動切替時はスキップ）
+        if(bgmOn && bgmStarted && !suppressOnStop){
+          playNextTrack();
+        }
+        suppressOnStop = false;
+      }
+    }).toDestination();
+    currentTrackIndex = index;
+    document.getElementById('trackBadge').textContent = track.label;
+    document.getElementById('trackCount').textContent = '(' + availableTracks.length + '曲構成)';
+  });
+}
+
+async function playNextTrack(){
+  const idx = pickNextTrackIndex();
+  await loadTrack(idx);
+  onVolumeChange();
+  trackOffset = 0;
+  trackStartTime = Tone.now();
+  bgmPlayer.start();
+  startSeekTimer();
+}
+
+async function startBGM(){
+  const label = document.getElementById('bgmToggleLabel');
+  const c = CONF[lang];
+  try{
+    await Tone.start();
+    if(availableTracks.length === 0){
+      bgmLoading = true;
+      label.textContent = c.bgmLoadingLabel;
+      availableTracks = await buildAvailableTrackList();
+      bgmLoading = false;
+      // 初回再生も6パターンからランダムに選ぶ
+      currentTrackIndex = Math.floor(Math.random() * availableTracks.length);
+    }
+    if(!bgmStarted){
+      await loadTrack(currentTrackIndex);
+      onVolumeChange();
+      trackOffset = 0;
+      trackStartTime = Tone.now();
+      bgmPlayer.start();
+      bgmStarted = true;
+      label.textContent = c.bgmOnLabel;
+      startSeekTimer();
+    }
+  } catch(e){
+    console.error('BGM load error:', e);
+    label.textContent = c.bgmOffLabel;
+    bgmOn = false;
+    document.getElementById('bgmToggle').classList.remove('on');
+    alert('BGMの読み込みに失敗しました。\n\n・index.htmlを直接開いている場合（file://）はローカルサーバー経由か、Vercel等にデプロイした状態でお試しください。\n・bgm_00.mp3がindex.htmlと同じフォルダにあるか確認してください。');
+  }
+}
+
+function startSeekTimer(){
+  if(seekTimer) clearInterval(seekTimer);
+  seekTimer = setInterval(updateSeekUI, 250);
+}
+
+function updateSeekUI(){
+  if(!bgmPlayer || !bgmPlayer.buffer) return;
+  const dur = bgmPlayer.buffer.duration;
+  const pos = getCurrentPosition();
+  const pct = dur > 0 ? (pos / dur) * 100 : 0;
+  document.getElementById('bgmSeek').value = pct;
+  document.getElementById('bgmTimeVal').textContent = fmtTime(pos) + ' / ' + fmtTime(dur);
+}
+
+function getCurrentPosition(){
+  if(!bgmPlayer || !bgmStarted) return 0;
+  const elapsed = Tone.now() - trackStartTime;
+  return Math.min(trackOffset + elapsed, bgmPlayer.buffer ? bgmPlayer.buffer.duration : 0);
+}
+
+function toggleBGM(){
+  if(bgmLoading) return;
+  bgmOn = !bgmOn;
+  const btn = document.getElementById('bgmToggle');
+  const label = document.getElementById('bgmToggleLabel');
+  const c = CONF[lang];
+  if(bgmOn){
+    btn.classList.add('on');
+    startBGM();
+  } else {
+    btn.classList.remove('on');
+    label.textContent = c.bgmOffLabel;
+    if(bgmPlayer && bgmStarted){ suppressOnStop = true; bgmPlayer.stop(); bgmStarted = false; }
+    if(seekTimer) clearInterval(seekTimer);
+  }
+}
+
+function onVolumeChange(){
+  const v = document.getElementById('bgmVolume').value;
+  if(bgmPlayer){
+    const db = v === '0' ? -60 : (Number(v)/100) * 20 - 20;
+    bgmPlayer.volume.value = db;
+  }
+}
+
+function onSeekInput(){
+  if(!bgmPlayer || !bgmPlayer.buffer || !bgmStarted) return;
+  const pct = parseFloat(document.getElementById('bgmSeek').value);
+  const dur = bgmPlayer.buffer.duration;
+  const target = (pct / 100) * dur;
+  document.getElementById('bgmTimeVal').textContent = fmtTime(target) + ' / ' + fmtTime(dur);
+  seekToPosition(target);
+}
+
+function seekToPosition(target){
+  if(!bgmPlayer || !bgmPlayer.buffer || !bgmStarted) return;
+  const dur = bgmPlayer.buffer.duration;
+  target = Math.max(0, Math.min(target, dur - 0.05));
+  suppressOnStop = true;
+  bgmPlayer.stop();
+  trackOffset = target;
+  trackStartTime = Tone.now();
+  bgmPlayer.start(undefined, target);
+  updateSeekUI();
+}
+
+function seekBy(deltaSec){
+  if(!bgmPlayer || !bgmPlayer.buffer || !bgmStarted) return;
+  const cur = getCurrentPosition();
+  seekToPosition(cur + deltaSec);
+}
+
+async function forceNextTrack(){
+  if(!bgmOn || !bgmStarted) return;
+  suppressOnStop = true;
+  bgmPlayer.stop();
+  await playNextTrack();
+}
+
+/* ===================== DEV PANEL (logo 5-click unlock) ===================== */
+const DEV_PASSWORD = 'noisereply2026'; // 必要に応じて変更してください
+let logoClickCount = 0;
+let logoClickTimer = null;
+
+document.getElementById('logoClickTarget').addEventListener('click', () => {
+  logoClickCount++;
+  if(logoClickTimer) clearTimeout(logoClickTimer);
+  logoClickTimer = setTimeout(() => { logoClickCount = 0; }, 1500); // 1.5秒以内に5回
+  if(logoClickCount >= 5){
+    logoClickCount = 0;
+    showDevUnlock();
+  }
+});
+
+function showDevUnlock(){
+  const el = document.getElementById('devUnlock');
+  el.style.display = 'flex';
+  document.getElementById('devPassword').value = '';
+  document.getElementById('devPassword').focus();
+}
+function hideDevUnlock(){
+  document.getElementById('devUnlock').style.display = 'none';
+}
+function checkDevPassword(){
+  const val = document.getElementById('devPassword').value;
+  if(val === DEV_PASSWORD){
+    hideDevUnlock();
+    showDevPanel();
+  } else {
+    document.getElementById('devPassword').value = '';
+    document.getElementById('devPassword').placeholder = '不一致';
+  }
+}
+document.getElementById('devPassword').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') checkDevPassword();
+});
+function showDevPanel(){
+  document.getElementById('bgmPanel').style.display = 'block';
+}
+function hideDevPanel(){
+  document.getElementById('bgmPanel').style.display = 'none';
+}
+</script>
+</body>
+</html>
